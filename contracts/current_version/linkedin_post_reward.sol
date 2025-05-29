@@ -54,4 +54,22 @@ contract LinkedInPostReward is Ownable2Step {
         emit PostCidSubmitted( submitter ,_postCid);
     }
 
+    function getPostCid(address user) external isRegistered(user) view returns( string memory cid){
+        address caller = msg.sender;
+        require( caller == user || caller == owner(),"Not authorized !!");
+        require( bytes(postCid[user].cid).length != 0, "You don't have submitted the cid !!");
+
+        return postCid[user].cid;
+    }
+
+    function getSubmittedCids() external view onlyOwner returns(Submission[] memory submits){
+        submits = new Submission[](submitters.length);  
+        for (uint i=0; i<submitters.length; i++) 
+        {
+            submits[i] =  postCid[submitters[i]] ;
+        }
+
+        return submits;
+    }
+
 }
