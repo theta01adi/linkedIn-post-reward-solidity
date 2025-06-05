@@ -6,6 +6,8 @@ import "@openzeppelin/contracts/access/Ownable2Step.sol";
 
 contract LinkedInPostReward is Ownable2Step {
 
+    // error NotRegistered();
+
     address[] private submitters;
 
     struct Submission {
@@ -13,28 +15,33 @@ contract LinkedInPostReward is Ownable2Step {
         string cid;
     }
     
-    mapping ( address => string ) public userToName;
-    mapping ( address => Submission ) private postCid;
+    mapping (address => string) public userToName;
+    mapping (address => Submission) private postCid;
 
     event UserRegistered(address indexed user, uint createdAt);
-    event PostCidSubmitted( address indexed submitter, string postCid );
-
+    event PostCidSubmitted(address indexed submitter, string postCid);
 
     constructor() Ownable(msg.sender) {
 
     }
 
-    modifier isUserRegistered() {
-        require(bytes(userToName[msg.sender]).length != 0,"User is not registered !!");
+    modifier isRegistered(address user) {
+        require(bytes(userToName[user]).length != 0,"You are not registered !!");
         _;
     }
-    
+
+    function isPostSubmitted(address user) public view returns (bool) {
+    return bytes(userToName[user]).length > 0;
+    }
+
+    function isUserRegistered() external view returns(bool) {
+        return bytes(userToName[msg.sender]).length == 0;
+    } 
 
     // filtering of username on python/react from the url
-    function register_user(string calldata username) external {
-        address user = msg.sender;
+    function register_user(address user, string calldata username) external onlyOwner {
         require(user != address(0), "User address can't be zero!!");
-        require(bytes(userToName[msg.sender]).length == 0,"User already registered !!");
+        require(bytes(userToName[user]).length == 0,"User already registered !!");
         require(bytes(username).length != 0, "Invalid username lenght !!");
 
         userToName[user] = username;
@@ -42,9 +49,9 @@ contract LinkedInPostReward is Ownable2Step {
         emit UserRegistered(user, block.timestamp);
     }
 
-    function submit_cid (string calldata _postCid) external isRegistered(msg.sender) {
-        address submitter = msg.sender;
-        require( bytes(postCid[submitter].cid).length == 0, "You have already submitted the cid !!");
+    function submit_cid(address user, string calldata _postCid) external isRegistered(msg.sender) {
+        address submitter = user;
+        require( bytes(postCid[submitter].cid).length == 0, "You have already submitted the post !!");
         require( bytes(_postCid).length != 0, "Cid length can't be zero !!" );
 
         postCid[submitter].cid = _postCid;
