@@ -5,7 +5,6 @@ import "@openzeppelin/contracts/access/Ownable2Step.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 contract LinkedInPostReward is Ownable2Step , ReentrancyGuard {
-    // error NotRegistered();
 
     address[] private submitters;
 
@@ -14,8 +13,10 @@ contract LinkedInPostReward is Ownable2Step , ReentrancyGuard {
         string cid;
     }
 
-    uint256 constant POST_SUBMIT_REWARD = 0.001 ether;
-    uint256 constant POST_CONTENT_REWARD = 0.1 ether;
+    address public winner;
+
+    uint256 immutable POST_SUBMIT_REWARD = 0.001 ether;
+    uint256 immutable POST_CONTENT_REWARD = 0.1 ether;
 
     mapping(address => string) public userToName;
     mapping(address => Submission) private postCid;
@@ -27,13 +28,14 @@ contract LinkedInPostReward is Ownable2Step , ReentrancyGuard {
         uint256 rewardAmount,
         string rewardFor
     );
+    event WinnerAnnounced(address indexed winner);
 
     constructor() Ownable(msg.sender) {}
 
     modifier isRegistered(address user) {
         require(
             bytes(userToName[user]).length != 0,
-            "You are not registered !!"
+            "User not registered !!"
         );
         _;
     }
@@ -85,6 +87,20 @@ contract LinkedInPostReward is Ownable2Step , ReentrancyGuard {
         emit UserRewarded(user, POST_SUBMIT_REWARD, "Post submit reward.");
     }
 
+    function announce_winner(address _winnerAddress) external onlyOwner isRegistered(_winnerAddress) {
+        require(winner == address(0), "Winner already announced !!");
+        require(isPostSubmitted(_winnerAddress), "Winner not submitted cid !!");
+        require(_winnerAddress != address(0), "Invalid winner address !!");
+
+        winner = _winnerAddress;
+
+        emit WinnerAnnounced(_winnerAddress);
+
+        _rewardUser(_winnerAddress, POST_CONTENT_REWARD);
+
+        emit UserRewarded(_winnerAddress, POST_CONTENT_REWARD, "Winner Reward for best content!!");
+    }
+
     function _rewardUser(address user, uint256 rewardAmount) internal {
         require(
             address(this).balance >= rewardAmount,
@@ -93,7 +109,7 @@ contract LinkedInPostReward is Ownable2Step , ReentrancyGuard {
 
         (bool success, ) = payable(user).call{value: rewardAmount}("");
 
-        require(success, "Post reward failed !!");
+        require(success, "Reward amount transfer failed !!");
     }
 
     function getPostCid(address user)
@@ -124,6 +140,10 @@ contract LinkedInPostReward is Ownable2Step , ReentrancyGuard {
         }
 
         return submits;
+    }
+
+    function getSubmittersCount() external view returns(uint256 submittersCount){
+        return submitters.length;
     }
 
     receive() external payable {
